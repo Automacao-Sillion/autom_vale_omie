@@ -48,7 +48,7 @@ def resolver_logo_url() -> str:
 # Config da página
 # ============================================================
 st.set_page_config(
-    page_title="Sillion · Envio de faturamento",
+    page_title="Sillion · Envio de lançamento - Vale",
     page_icon="",
     layout="centered",
     initial_sidebar_state="collapsed",
@@ -64,9 +64,6 @@ EMAIL_REGEX = re.compile(
     re.IGNORECASE,
 )
 TIPOS_ACEITOS = ["xlsx", "xlsb", "csv"]
-
-# Tipos de faturamento aceitos pelo backend (esteira de processamento N8N)
-TIPOS_FATURAMENTO = ["TOT", "VALE"]
 
 TIMEOUT_REQ = 120  # segundos
 
@@ -135,14 +132,13 @@ def detectar_mime(filename: str) -> str:
     return mime or "application/octet-stream"
 
 
-def montar_payload(email: str, arquivo, tipo_faturamento: str) -> dict:
+def montar_payload(email: str, arquivo) -> dict:
     conteudo = arquivo.getvalue()
     return {
         "email": email.strip(),
         "filename": arquivo.name,
         "file_base64": base64.b64encode(conteudo).decode("utf-8"),
         "mime_type": detectar_mime(arquivo.name),
-        "tipo_faturamento": tipo_faturamento,
     }
 
 
@@ -161,8 +157,8 @@ def enviar_para_n8n(url: str, payload: dict) -> requests.Response:
 inject(render_template("header", logo_url=resolver_logo_url()))
 inject(render_template(
     "hero",
-    titulo="Envio de faturamento",
-    subtitulo="Envie o arquivo de faturamento para processamento automático. "
+    titulo="Envio de lançamento - Vale",
+    subtitulo='Envie o "arquivo vale" de lançamento para processamento automático. '
               "O relatório retornará no seu email.",
 ))
 
@@ -195,7 +191,6 @@ arquivo = st.file_uploader(
     help="Formatos aceitos: .xlsx, .xlsb, .csv",
 )
 
-tipo_faturamento = None
 if arquivo is not None:
     tamanho_mb = len(arquivo.getvalue()) / (1024 * 1024)
     inject(render_template(
@@ -203,15 +198,6 @@ if arquivo is not None:
         nome_arquivo=arquivo.name,
         tamanho_mb=f"{tamanho_mb:.2f}",
     ))
-
-    # Campo obrigatório: tipo de faturamento associado ao arquivo
-    tipo_faturamento = st.selectbox(
-        "Tipo de faturamento",
-        options=TIPOS_FATURAMENTO,
-        index=None,
-        placeholder="Selecione o tipo...",
-        help="Identifica em qual esteira o arquivo será processado pelo backend.",
-    )
 
 st.write("")
 enviar = st.button("Enviar arquivo", type="primary", use_container_width=True)
@@ -232,8 +218,6 @@ if enviar:
         )
     if arquivo is None:
         erros.append("Selecione um arquivo para enviar.")
-    elif not tipo_faturamento:
-        erros.append("Selecione o tipo de faturamento.")
 
     if erros:
         for e in erros:
@@ -241,7 +225,7 @@ if enviar:
     else:
         with st.spinner("Enviando arquivo para processamento..."):
             try:
-                payload = montar_payload(email, arquivo, tipo_faturamento)
+                payload = montar_payload(email, arquivo)
                 resp = enviar_para_n8n(WEBHOOK_URL, payload)
 
                 if 200 <= resp.status_code < 300:
