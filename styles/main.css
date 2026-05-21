@@ -330,6 +330,52 @@ ul[role="listbox"] li[aria-selected="true"] {
     margin: 0 !important;
 }
 
+/* Botão "X" de remover arquivo — minimal, segue paleta roxa do projeto */
+html body [data-testid="stFileUploaderDeleteBtn"],
+html body [data-testid="stFileUploader"] [data-testid="stFileUploaderFile"] button,
+html body [data-testid="stFileUploader"] button[kind="header"],
+html body [data-testid="stFileUploader"] button[kind="headerNoPadding"],
+html body [data-testid="stFileUploader"] button[aria-label*="Remove" i],
+html body [data-testid="stFileUploader"] button[title*="Remove" i] {
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    color: var(--cor-texto-muted) !important;
+    border: 1px solid var(--cor-borda) !important;
+    border-radius: var(--raio-pill) !important;
+    padding: 0 !important;
+    width: 28px !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    box-shadow: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.15s ease !important;
+}
+html body [data-testid="stFileUploaderDeleteBtn"]:hover,
+html body [data-testid="stFileUploader"] [data-testid="stFileUploaderFile"] button:hover,
+html body [data-testid="stFileUploader"] button[kind="header"]:hover,
+html body [data-testid="stFileUploader"] button[kind="headerNoPadding"]:hover,
+html body [data-testid="stFileUploader"] button[aria-label*="Remove" i]:hover,
+html body [data-testid="stFileUploader"] button[title*="Remove" i]:hover {
+    background: rgba(139,92,246,0.10) !important;
+    border-color: var(--cor-acento) !important;
+    color: var(--cor-acento-hover) !important;
+    transform: none !important;
+}
+html body [data-testid="stFileUploaderDeleteBtn"] svg,
+html body [data-testid="stFileUploader"] [data-testid="stFileUploaderFile"] button svg,
+html body [data-testid="stFileUploader"] button[kind="header"] svg,
+html body [data-testid="stFileUploader"] button[kind="headerNoPadding"] svg,
+html body [data-testid="stFileUploader"] button[aria-label*="Remove" i] svg,
+html body [data-testid="stFileUploader"] button[title*="Remove" i] svg {
+    width: 16px !important;
+    height: 16px !important;
+    color: currentColor !important;
+    fill: currentColor !important;
+}
+
 /* ============================================================
    BOTÃO PRIMÁRIO — gradient indigo→purple
    ============================================================ */
