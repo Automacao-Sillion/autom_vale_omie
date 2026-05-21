@@ -48,7 +48,7 @@ def resolver_logo_url() -> str:
 # Config da página
 # ============================================================
 st.set_page_config(
-    page_title="Sillion · Envio de lançamento - Vale",
+    page_title="Sillion · Baixas Vale",
     page_icon="",
     layout="centered",
     initial_sidebar_state="collapsed",
@@ -158,8 +158,8 @@ def enviar_para_n8n(url: str, payload: dict) -> requests.Response:
 inject(render_template("header", logo_url=resolver_logo_url()))
 inject(render_template(
     "hero",
-    titulo="Envio de lançamento - Vale",
-    subtitulo='Envie o "arquivo vale" de lançamento para processamento automático. '
+    titulo="Baixas Vale",
+    subtitulo='Envie o "arquivo vale" de baixa para processamento automático. '
               "O relatório retornará no seu email.",
 ))
 
@@ -187,10 +187,10 @@ email = st.text_input(
 )
 
 data_lancamento = st.date_input(
-    "Data de lançamento",
+    "Data da baixa",
     value=None,
     format="DD/MM/YYYY",
-    help="Selecione a data de referência do lançamento. "
+    help="Selecione a data de referência da baixa. "
          "Esta data será enviada junto com o arquivo para o processamento.",
 )
 
@@ -226,7 +226,7 @@ if enviar:
             "(ex: seu.nome@" + DOMINIO_PERMITIDO + ")."
         )
     if data_lancamento is None:
-        erros.append("Selecione a data de lançamento.")
+        erros.append("Selecione a data da baixa.")
     if arquivo is None:
         erros.append("Selecione um arquivo para enviar.")
 
