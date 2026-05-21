@@ -132,13 +132,14 @@ def detectar_mime(filename: str) -> str:
     return mime or "application/octet-stream"
 
 
-def montar_payload(email: str, arquivo) -> dict:
+def montar_payload(email: str, arquivo, data_lancamento) -> dict:
     conteudo = arquivo.getvalue()
     return {
         "email": email.strip(),
         "filename": arquivo.name,
         "file_base64": base64.b64encode(conteudo).decode("utf-8"),
         "mime_type": detectar_mime(arquivo.name),
+        "data_lancamento": data_lancamento.isoformat(),
     }
 
 
@@ -185,6 +186,14 @@ email = st.text_input(
          "O relatório processado será enviado para este endereço.",
 )
 
+data_lancamento = st.date_input(
+    "Data de lançamento",
+    value=None,
+    format="DD/MM/YYYY",
+    help="Selecione a data de referência do lançamento. "
+         "Esta data será enviada junto com o arquivo para o processamento.",
+)
+
 arquivo = st.file_uploader(
     "Arquivo de faturamento",
     type=TIPOS_ACEITOS,
@@ -216,6 +225,8 @@ if enviar:
             f"Email inválido. Use um endereço corporativo @{DOMINIO_PERMITIDO} "
             "(ex: seu.nome@" + DOMINIO_PERMITIDO + ")."
         )
+    if data_lancamento is None:
+        erros.append("Selecione a data de lançamento.")
     if arquivo is None:
         erros.append("Selecione um arquivo para enviar.")
 
@@ -225,7 +236,7 @@ if enviar:
     else:
         with st.spinner("Enviando arquivo para processamento..."):
             try:
-                payload = montar_payload(email, arquivo)
+                payload = montar_payload(email, arquivo, data_lancamento)
                 resp = enviar_para_n8n(WEBHOOK_URL, payload)
 
                 if 200 <= resp.status_code < 300:
