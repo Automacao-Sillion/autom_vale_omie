@@ -48,7 +48,7 @@ def resolver_logo_url() -> str:
 # Config da página
 # ============================================================
 st.set_page_config(
-    page_title="Sillion · Baixas Vale",
+    page_title="Sillion · Baixas Recebimento",
     page_icon="",
     layout="centered",
     initial_sidebar_state="collapsed",
@@ -159,7 +159,7 @@ def enviar_para_n8n(url: str, payload: dict) -> requests.Response:
 inject(render_template("header", logo_url=resolver_logo_url()))
 inject(render_template(
     "hero",
-    titulo="Baixas Vale",
+    titulo="Baixas Recebimento",
     subtitulo='Envie o "arquivo vale" de baixa para processamento automático. '
               "O relatório retornará no seu email.",
 ))
