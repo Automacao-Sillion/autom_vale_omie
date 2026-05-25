@@ -132,10 +132,11 @@ def detectar_mime(filename: str) -> str:
     return mime or "application/octet-stream"
 
 
-def montar_payload(email: str, arquivo, data_lancamento) -> dict:
+def montar_payload(email: str, arquivo, data_lancamento, empresa: str) -> dict:
     conteudo = arquivo.getvalue()
     return {
         "email": email.strip(),
+        "empresa": empresa,
         "filename": arquivo.name,
         "file_base64": base64.b64encode(conteudo).decode("utf-8"),
         "mime_type": detectar_mime(arquivo.name),
@@ -186,6 +187,15 @@ email = st.text_input(
          "O relatório processado será enviado para este endereço.",
 )
 
+empresa = st.radio(
+    "Selecione a empresa:",
+    options=["Sitrack", "Sillion"],
+    index=None,
+    horizontal=True,
+    help="Selecione a empresa responsável pela baixa. "
+         "Esta informação será enviada junto com o arquivo.",
+)
+
 data_lancamento = st.date_input(
     "Data da baixa",
     value=None,
@@ -225,6 +235,8 @@ if enviar:
             f"Email inválido. Use um endereço corporativo @{DOMINIO_PERMITIDO} "
             "(ex: seu.nome@" + DOMINIO_PERMITIDO + ")."
         )
+    if empresa is None:
+        erros.append("Selecione a empresa (Sitrack ou Sillion).")
     if data_lancamento is None:
         erros.append("Selecione a data da baixa.")
     if arquivo is None:
@@ -236,7 +248,7 @@ if enviar:
     else:
         with st.spinner("Enviando arquivo para processamento..."):
             try:
-                payload = montar_payload(email, arquivo, data_lancamento)
+                payload = montar_payload(email, arquivo, data_lancamento, empresa)
                 resp = enviar_para_n8n(WEBHOOK_URL, payload)
 
                 if 200 <= resp.status_code < 300:
