@@ -49,7 +49,7 @@ def resolver_logo_url() -> str:
 # ============================================================
 st.set_page_config(
     page_title="Sillion · Baixas Recebimento",
-    page_icon="",
+    page_icon="https://www.sillion.com.br/wp-content/themes/sillion/images/logo-white-tm.svg",
     layout="centered",
     initial_sidebar_state="collapsed",
 )
