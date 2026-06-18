@@ -1,8 +1,6 @@
 """
-Importação de DUIMP → XML — Front Streamlit (Sillion)
-Envia o NÚMERO da DUIMP + email para o backend N8N (POST JSON).
-O N8N autentica no Portal Único, consulta a DUIMP, gera o XML estruturado
-e devolve o arquivo no email informado.
+Envio de faturamento — Front Streamlit (Sillion)
+Encaminha arquivo (xlsx/xlsb/csv) + email para o backend N8N via POST JSON com base64.
 
 Arquitetura:
 - app.py        → lógica Python (config, envio, widgets de input)
@@ -10,7 +8,9 @@ Arquitetura:
 - templates/    → HTML estrutural (header, hero, footer, etc.)
 """
 
+import base64
 import re
+import mimetypes
 from datetime import datetime
 from pathlib import Path
 
@@ -48,7 +48,7 @@ def resolver_logo_url() -> str:
 # Config da página
 # ============================================================
 st.set_page_config(
-    page_title="Sillion · DUIMP → XML",
+    page_title="Sillion · Baixas Recebimento",
     page_icon="https://www.sillion.com.br/wp-content/themes/sillion/images/logo-white-tm.svg",
     layout="centered",
     initial_sidebar_state="collapsed",
@@ -63,8 +63,15 @@ EMAIL_REGEX = re.compile(
     rf"^[A-Za-z0-9._%+\-]+@{re.escape(DOMINIO_PERMITIDO)}$",
     re.IGNORECASE,
 )
+TIPOS_ACEITOS = ["xlsx", "xlsb", "csv"]
 
 TIMEOUT_REQ = 120  # segundos
+
+MIME_FALLBACK = {
+    "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "xlsb": "application/vnd.ms-excel.sheet.binary.macroEnabled.12",
+    "csv": "text/csv",
+}
 
 
 # ============================================================
@@ -117,19 +124,23 @@ def email_valido(email: str) -> bool:
     return bool(EMAIL_REGEX.match(email.strip()))
 
 
-def numero_duimp_valido(numero: str) -> bool:
-    """Validação leve: não vazio e com tamanho mínimo de uma DUIMP."""
-    return len(re.sub(r"[^0-9A-Za-z]", "", numero)) >= 10
+def detectar_mime(filename: str) -> str:
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext in MIME_FALLBACK:
+        return MIME_FALLBACK[ext]
+    mime, _ = mimetypes.guess_type(filename)
+    return mime or "application/octet-stream"
 
 
-def montar_payload(email: str, numero_duimp: str, versao: str) -> dict:
-    """Monta o JSON enviado ao N8N: número da DUIMP + versão + email."""
+def montar_payload(email: str, arquivo, data_lancamento, empresa: str) -> dict:
+    conteudo = arquivo.getvalue()
     return {
         "email": email.strip(),
-        "tipo": "duimp",
-        "numeroDuimp": numero_duimp.strip(),
-        "versao": (versao.strip() or "1"),
-        "enviado_em": datetime.now().isoformat(timespec="seconds"),
+        "empresa": empresa,
+        "filename": arquivo.name,
+        "file_base64": base64.b64encode(conteudo).decode("utf-8"),
+        "mime_type": detectar_mime(arquivo.name),
+        "data_lancamento": data_lancamento.isoformat(),
     }
 
 
@@ -148,9 +159,9 @@ def enviar_para_n8n(url: str, payload: dict) -> requests.Response:
 inject(render_template("header", logo_url=resolver_logo_url()))
 inject(render_template(
     "hero",
-    titulo="Importação de DUIMP",
-    subtitulo="Informe o número da DUIMP para processamento automático. "
-              "O XML estruturado retornará no seu email.",
+    titulo="Baixas Recebimento",
+    subtitulo='Envie o "arquivo vale" de baixa para processamento automático. '
+              "O relatório retornará no seu email.",
 ))
 
 
@@ -173,23 +184,42 @@ email = st.text_input(
     "Email corporativo",
     placeholder=f"usuario@{DOMINIO_PERMITIDO}",
     help=f"Apenas emails do domínio @{DOMINIO_PERMITIDO} são aceitos. "
-         "O XML gerado será enviado para este endereço.",
+         "O relatório processado será enviado para este endereço.",
 )
 
-numero_duimp = st.text_input(
-    "Número da DUIMP",
-    placeholder="26BR0000407051-9",
-    help="Informe o número da DUIMP a ser consultada no Portal Único.",
+empresa = st.radio(
+    "Selecione a empresa:",
+    options=["Sitrack", "Sillion"],
+    index=None,
+    horizontal=True,
+    help="Selecione a empresa responsável pela baixa. "
+         "Esta informação será enviada junto com o arquivo.",
 )
 
-versao = st.text_input(
-    "Versão",
-    value="1",
-    help="Versão da DUIMP. Em geral é 1, salvo retificações.",
+data_lancamento = st.date_input(
+    "Data da baixa",
+    value=None,
+    format="DD/MM/YYYY",
+    help="Selecione a data de referência da baixa. "
+         "Esta data será enviada junto com o arquivo para o processamento.",
 )
+
+arquivo = st.file_uploader(
+    "Arquivo de faturamento",
+    type=TIPOS_ACEITOS,
+    help="Formatos aceitos: .xlsx, .xlsb, .csv",
+)
+
+if arquivo is not None:
+    tamanho_mb = len(arquivo.getvalue()) / (1024 * 1024)
+    inject(render_template(
+        "file_preview",
+        nome_arquivo=arquivo.name,
+        tamanho_mb=f"{tamanho_mb:.2f}",
+    ))
 
 st.write("")
-enviar = st.button("Gerar XML", type="primary", use_container_width=True)
+enviar = st.button("Enviar arquivo", type="primary", use_container_width=True)
 
 
 # ============================================================
@@ -205,28 +235,30 @@ if enviar:
             f"Email inválido. Use um endereço corporativo @{DOMINIO_PERMITIDO} "
             "(ex: seu.nome@" + DOMINIO_PERMITIDO + ")."
         )
-    if not numero_duimp.strip():
-        erros.append("Informe o número da DUIMP.")
-    elif not numero_duimp_valido(numero_duimp):
-        erros.append("Número da DUIMP inválido. Confira o número informado.")
+    if empresa is None:
+        erros.append("Selecione a empresa (Sitrack ou Sillion).")
+    if data_lancamento is None:
+        erros.append("Selecione a data da baixa.")
+    if arquivo is None:
+        erros.append("Selecione um arquivo para enviar.")
 
     if erros:
         for e in erros:
             st.error(e)
     else:
-        with st.spinner("Enviando a DUIMP para processamento..."):
+        with st.spinner("Enviando arquivo para processamento..."):
             try:
-                payload = montar_payload(email, numero_duimp, versao)
+                payload = montar_payload(email, arquivo, data_lancamento, empresa)
                 resp = enviar_para_n8n(WEBHOOK_URL, payload)
 
                 if 200 <= resp.status_code < 300:
                     @st.dialog("Envio realizado")
                     def confirmacao():
-                        st.success("DUIMP enviada com sucesso!")
+                        st.success("Arquivo enviado com sucesso!")
                         st.write(
-                            f"O XML da DUIMP **{numero_duimp.strip()}** será "
-                            f"encaminhado para **{email.strip()}** assim que o "
-                            "backend concluir o processamento."
+                            f"O relatório processado será encaminhado para "
+                            f"**{email.strip()}** assim que o backend concluir "
+                            "o processamento."
                         )
                         st.caption(
                             f"Enviado em {datetime.now().strftime('%d/%m/%Y às %H:%M:%S')}"
